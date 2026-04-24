@@ -146,7 +146,7 @@ function PublicWishlist() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Claim this gift</DialogTitle>
-            <DialogDescription>{claiming?.product.name}</DialogDescription>
+            <DialogDescription>{claiming?.product?.name}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label>Your name</Label>

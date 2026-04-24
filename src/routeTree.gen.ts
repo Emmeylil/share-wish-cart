@@ -9,11 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WishlistsRouteImport } from './routes/wishlists'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WishlistsIdRouteImport } from './routes/wishlists.$id'
+import { Route as WCodeRouteImport } from './routes/w.$code'
 import { Route as CheckoutCodeRouteImport } from './routes/checkout.$code'
 import { Route as CartCodeRouteImport } from './routes/cart.$code'
 
+const WishlistsRoute = WishlistsRouteImport.update({
+  id: '/wishlists',
+  path: '/wishlists',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CartRoute = CartRouteImport.update({
   id: '/cart',
   path: '/cart',
@@ -22,6 +30,16 @@ const CartRoute = CartRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WishlistsIdRoute = WishlistsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => WishlistsRoute,
+} as any)
+const WCodeRoute = WCodeRouteImport.update({
+  id: '/w/$code',
+  path: '/w/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutCodeRoute = CheckoutCodeRouteImport.update({
@@ -38,38 +56,78 @@ const CartCodeRoute = CartCodeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cart': typeof CartRouteWithChildren
+  '/wishlists': typeof WishlistsRouteWithChildren
   '/cart/$code': typeof CartCodeRoute
   '/checkout/$code': typeof CheckoutCodeRoute
+  '/w/$code': typeof WCodeRoute
+  '/wishlists/$id': typeof WishlistsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cart': typeof CartRouteWithChildren
+  '/wishlists': typeof WishlistsRouteWithChildren
   '/cart/$code': typeof CartCodeRoute
   '/checkout/$code': typeof CheckoutCodeRoute
+  '/w/$code': typeof WCodeRoute
+  '/wishlists/$id': typeof WishlistsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cart': typeof CartRouteWithChildren
+  '/wishlists': typeof WishlistsRouteWithChildren
   '/cart/$code': typeof CartCodeRoute
   '/checkout/$code': typeof CheckoutCodeRoute
+  '/w/$code': typeof WCodeRoute
+  '/wishlists/$id': typeof WishlistsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/cart' | '/cart/$code' | '/checkout/$code'
+  fullPaths:
+    | '/'
+    | '/cart'
+    | '/wishlists'
+    | '/cart/$code'
+    | '/checkout/$code'
+    | '/w/$code'
+    | '/wishlists/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/cart' | '/cart/$code' | '/checkout/$code'
-  id: '__root__' | '/' | '/cart' | '/cart/$code' | '/checkout/$code'
+  to:
+    | '/'
+    | '/cart'
+    | '/wishlists'
+    | '/cart/$code'
+    | '/checkout/$code'
+    | '/w/$code'
+    | '/wishlists/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/cart'
+    | '/wishlists'
+    | '/cart/$code'
+    | '/checkout/$code'
+    | '/w/$code'
+    | '/wishlists/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CartRoute: typeof CartRouteWithChildren
+  WishlistsRoute: typeof WishlistsRouteWithChildren
   CheckoutCodeRoute: typeof CheckoutCodeRoute
+  WCodeRoute: typeof WCodeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wishlists': {
+      id: '/wishlists'
+      path: '/wishlists'
+      fullPath: '/wishlists'
+      preLoaderRoute: typeof WishlistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cart': {
       id: '/cart'
       path: '/cart'
@@ -82,6 +140,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wishlists/$id': {
+      id: '/wishlists/$id'
+      path: '/$id'
+      fullPath: '/wishlists/$id'
+      preLoaderRoute: typeof WishlistsIdRouteImport
+      parentRoute: typeof WishlistsRoute
+    }
+    '/w/$code': {
+      id: '/w/$code'
+      path: '/w/$code'
+      fullPath: '/w/$code'
+      preLoaderRoute: typeof WCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/$code': {
@@ -111,10 +183,24 @@ const CartRouteChildren: CartRouteChildren = {
 
 const CartRouteWithChildren = CartRoute._addFileChildren(CartRouteChildren)
 
+interface WishlistsRouteChildren {
+  WishlistsIdRoute: typeof WishlistsIdRoute
+}
+
+const WishlistsRouteChildren: WishlistsRouteChildren = {
+  WishlistsIdRoute: WishlistsIdRoute,
+}
+
+const WishlistsRouteWithChildren = WishlistsRoute._addFileChildren(
+  WishlistsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CartRoute: CartRouteWithChildren,
+  WishlistsRoute: WishlistsRouteWithChildren,
   CheckoutCodeRoute: CheckoutCodeRoute,
+  WCodeRoute: WCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
