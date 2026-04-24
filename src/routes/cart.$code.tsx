@@ -62,37 +62,73 @@ function SharedCart() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
-      <div className="mb-6 p-4 rounded-lg bg-accent/40 border border-accent">
-        <p className="text-sm font-medium">
-          🎁 Someone shared this cart with you. You can complete the purchase on their behalf.
+      {/* Hero banner explaining the share flow */}
+      <div className="mb-6 rounded-xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground p-6 shadow-[var(--shadow-hover)]">
+        <div className="text-3xl mb-2">🎁</div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight">
+          A friend shared their cart with you
+        </h1>
+        <p className="mt-2 opacity-95 text-sm sm:text-base">
+          Below are the exact items they want. Review them, then check out on their behalf.
+          They'll get a notification the moment you complete the purchase.
         </p>
       </div>
+
+      {/* Progress stepper */}
+      <ol className="flex items-center gap-2 mb-6 text-xs sm:text-sm">
+        <li className="flex items-center gap-2 text-success">
+          <span className="size-6 rounded-full bg-success text-success-foreground grid place-items-center font-bold">✓</span>
+          <span className="hidden sm:inline">Cart shared</span>
+        </li>
+        <span className="flex-1 h-px bg-success" />
+        <li className="flex items-center gap-2 text-primary font-semibold">
+          <span className="size-6 rounded-full bg-primary text-primary-foreground grid place-items-center font-bold">2</span>
+          <span className="hidden sm:inline">Review & pay</span>
+        </li>
+        <span className="flex-1 h-px bg-border" />
+        <li className="flex items-center gap-2 text-muted-foreground">
+          <span className="size-6 rounded-full bg-muted text-muted-foreground grid place-items-center font-bold">3</span>
+          <span className="hidden sm:inline">Owner notified</span>
+        </li>
+      </ol>
 
       {cart.status === "fulfilled" && (
         <div className="mb-4 p-4 rounded-lg bg-success/10 border border-success/30 flex items-center gap-3">
           <CheckCircle2 className="size-5 text-success" />
-          <span className="font-medium">This cart has already been fulfilled.</span>
+          <span className="font-medium">This cart has already been paid for. Thanks!</span>
         </div>
       )}
 
-      <h1 className="text-2xl font-bold mb-4">Shared cart ({items.length} items)</h1>
+      <h2 className="text-lg font-bold mb-3">
+        Their cart · {items.length} {items.length === 1 ? "item" : "items"}
+      </h2>
 
       <div className="space-y-3 mb-6">
         {items.map((i) => (
-          <div key={i.id} className="flex gap-4 bg-card rounded-lg border border-border p-3">
+          <div key={i.id} className="flex gap-4 bg-card rounded-lg border border-border p-3 shadow-[var(--shadow-card)]">
             <img src={i.product.image_url} alt={i.product.name} className="size-20 rounded-md object-cover" />
-            <div className="flex-1">
-              <h3 className="font-medium">{i.product.name}</h3>
-              <div className="text-sm text-muted-foreground">Qty: {i.quantity}</div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium line-clamp-2">{i.product.name}</h3>
+              <div className="text-sm text-muted-foreground mt-1">
+                ${Number(i.product.price).toFixed(2)} × {i.quantity}
+              </div>
             </div>
-            <div className="font-bold">${(Number(i.product.price) * i.quantity).toFixed(2)}</div>
+            <div className="font-bold text-right">${(Number(i.product.price) * i.quantity).toFixed(2)}</div>
           </div>
         ))}
       </div>
 
-      <div className="bg-card rounded-lg border border-border p-5 mb-4">
-        <div className="flex justify-between font-bold text-lg">
-          <span>Total</span>
+      <div className="bg-card rounded-lg border border-border p-5 mb-4 shadow-[var(--shadow-card)]">
+        <div className="flex justify-between text-sm mb-2">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span>${total.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between text-sm mb-3">
+          <span className="text-muted-foreground">Shipping</span>
+          <span className="text-success">Free</span>
+        </div>
+        <div className="border-t border-border pt-3 flex justify-between font-bold text-lg">
+          <span>Total to pay</span>
           <span>${total.toFixed(2)}</span>
         </div>
       </div>
@@ -103,9 +139,15 @@ function SharedCart() {
         className="w-full bg-primary hover:bg-primary-dark"
         size="lg"
       >
-        <ShoppingBag className="size-4 mr-2" />
-        {cart.status === "fulfilled" ? "Already fulfilled" : "Checkout for them"}
+        <ShoppingBag className="size-5 mr-2" />
+        {cart.status === "fulfilled"
+          ? "Already paid for"
+          : `Pay $${total.toFixed(2)} on their behalf`}
       </Button>
+
+      <p className="text-xs text-muted-foreground text-center mt-3">
+        This is a demo checkout — no real payment will be charged.
+      </p>
     </div>
   );
 }
