@@ -88,7 +88,7 @@ function Checkout() {
         </div>
         <h1 className="text-2xl font-bold mb-2">Order confirmed!</h1>
         <p className="text-muted-foreground mb-6">
-          Thanks — the cart owner has been notified. Order total: <strong>${total.toFixed(2)}</strong>
+          Thanks — the cart owner has been notified. Order total: <strong>₦{total.toLocaleString()}</strong>
         </p>
         <Link to="/"><Button className="bg-primary hover:bg-primary-dark">Continue shopping</Button></Link>
       </div>
@@ -117,12 +117,12 @@ function Checkout() {
           <span>{items.reduce((s, i) => s + i.quantity, 0)}</span>
         </div>
         <div className="flex justify-between font-bold text-lg pt-2 border-t border-border">
-          <span>Total</span><span>${total.toFixed(2)}</span>
+          <span>Total</span><span>₦{total.toLocaleString()}</span>
         </div>
       </div>
 
       <Button onClick={placeOrder} disabled={processing || cart.status === "fulfilled"} className="w-full bg-primary hover:bg-primary-dark" size="lg">
-        {processing ? <><Loader2 className="size-4 mr-2 animate-spin" />Processing…</> : `Place order · $${total.toFixed(2)}`}
+        {processing ? <><Loader2 className="size-4 mr-2 animate-spin" />Processing…</> : `Place order · ₦${total.toLocaleString()}`}
       </Button>
     </div>
   );

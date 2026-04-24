@@ -152,7 +152,7 @@ function PublicWishlist() {
                     <Badge className="bg-primary text-primary-foreground"><Star className="size-3 mr-1" />Most wanted</Badge>
                   )}
                 </div>
-                <div className="text-lg font-bold mt-1">${Number(it.product.price).toFixed(2)}</div>
+                <div className="text-lg font-bold mt-1">₦{Number(it.product.price).toLocaleString()}</div>
                 {claimed && (
                   <div className="flex items-center gap-1 text-sm text-success mt-1">
                     <CheckCircle2 className="size-3" />

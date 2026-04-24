@@ -130,10 +130,10 @@ function SharedCart() {
             <div className="flex-1 min-w-0">
               <h3 className="font-medium line-clamp-2">{i.product.name}</h3>
               <div className="text-sm text-muted-foreground mt-1">
-                ${Number(i.product.price).toFixed(2)} × {i.quantity}
+                ₦{Number(i.product.price).toLocaleString()} × {i.quantity}
               </div>
             </div>
-            <div className="font-bold text-right">${(Number(i.product.price) * i.quantity).toFixed(2)}</div>
+            <div className="font-bold text-right">₦{(Number(i.product.price) * i.quantity).toLocaleString()}</div>
           </div>
         ))}
       </div>
@@ -141,7 +141,7 @@ function SharedCart() {
       <div className="bg-card rounded-lg border border-border p-5 mb-4 shadow-[var(--shadow-card)]">
         <div className="flex justify-between text-sm mb-2">
           <span className="text-muted-foreground">Subtotal</span>
-          <span>${total.toFixed(2)}</span>
+          <span>₦{total.toLocaleString()}</span>
         </div>
         <div className="flex justify-between text-sm mb-3">
           <span className="text-muted-foreground">Shipping</span>
@@ -149,7 +149,7 @@ function SharedCart() {
         </div>
         <div className="border-t border-border pt-3 flex justify-between font-bold text-lg">
           <span>Total to pay</span>
-          <span>${total.toFixed(2)}</span>
+          <span>₦{total.toLocaleString()}</span>
         </div>
       </div>
 
@@ -162,7 +162,7 @@ function SharedCart() {
         <ShoppingBag className="size-5 mr-2" />
         {cart.status === "fulfilled"
           ? "Already paid for"
-          : `Pay $${total.toFixed(2)} on their behalf`}
+          : `Pay ₦${total.toLocaleString()} on their behalf`}
       </Button>
 
       <p className="text-xs text-muted-foreground text-center mt-3">

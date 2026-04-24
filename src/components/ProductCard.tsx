@@ -38,7 +38,7 @@ export function ProductCard({ product }: { product: Product }) {
           <span>{product.category}</span>
         </div>
         <div className="text-lg font-bold text-foreground mt-auto">
-          ${Number(product.price).toFixed(2)}
+          ₦{Number(product.price).toLocaleString()}
         </div>
         <Button
           size="sm"

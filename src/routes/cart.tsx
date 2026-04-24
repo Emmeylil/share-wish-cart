@@ -90,7 +90,7 @@ function CartPage() {
                   {item.product.category}
                 </div>
                 <div className="text-lg font-bold mt-1">
-                  ${Number(item.product.price).toFixed(2)}
+                  ₦{Number(item.product.price).toLocaleString()}
                 </div>
               </div>
               <div className="flex flex-col items-end justify-between">
@@ -128,7 +128,7 @@ function CartPage() {
             <h2 className="font-bold mb-3">Order summary</h2>
             <div className="flex justify-between text-sm mb-2">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>${total().toFixed(2)}</span>
+              <span>₦{total().toLocaleString()}</span>
             </div>
             <div className="flex justify-between text-sm mb-3">
               <span className="text-muted-foreground">Shipping</span>
@@ -136,7 +136,7 @@ function CartPage() {
             </div>
             <div className="border-t border-border pt-3 flex justify-between font-bold text-lg">
               <span>Total</span>
-              <span>${total().toFixed(2)}</span>
+              <span>₦{total().toLocaleString()}</span>
             </div>
             <Button
               onClick={() => cart && navigate({ to: "/checkout/$code", params: { code: cart.share_code } })}
