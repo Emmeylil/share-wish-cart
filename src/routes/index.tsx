@@ -54,6 +54,47 @@ function Index() {
         </div>
       </section>
 
+      {/* How Share Cart works */}
+      <section className="mb-10">
+        <div className="flex items-end justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold">How Share Cart works</h2>
+            <p className="text-sm text-muted-foreground">Let someone else pay for your cart in 3 simple steps.</p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-3 gap-4">
+          {[
+            {
+              step: "1",
+              title: "Build your cart",
+              body: "Add the products you want from the storefront. Quantities are saved automatically.",
+              icon: "🛒",
+            },
+            {
+              step: "2",
+              title: "Share the link",
+              body: "Open your cart and copy the share link. Send it to a parent, partner, or friend on WhatsApp.",
+              icon: "🔗",
+            },
+            {
+              step: "3",
+              title: "They check out for you",
+              body: "They open the link, see your exact cart, and pay. You get a live notification when it's done.",
+              icon: "🎁",
+            },
+          ].map((s) => (
+            <div key={s.step} className="relative bg-card border border-border rounded-lg p-5 shadow-[var(--shadow-card)]">
+              <div className="absolute -top-3 -left-3 size-8 rounded-full bg-primary text-primary-foreground font-bold grid place-items-center shadow-md">
+                {s.step}
+              </div>
+              <div className="text-3xl mb-2">{s.icon}</div>
+              <h3 className="font-bold mb-1">{s.title}</h3>
+              <p className="text-sm text-muted-foreground">{s.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-5">
         <div className="flex gap-2 overflow-x-auto">
