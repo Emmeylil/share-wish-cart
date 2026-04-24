@@ -13,10 +13,18 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const { cart, items, loadOrCreate, updateQty, removeItem, total } = useCartStore();
+  const cart = useCartStore((s) => s.cart);
+  const items = useCartStore((s) => s.items);
+  const loadOrCreate = useCartStore((s) => s.loadOrCreate);
+  const updateQty = useCartStore((s) => s.updateQty);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const total = useCartStore((s) => s.total);
+  const loading = useCartStore((s) => s.loading);
+
   const navigate = useNavigate();
   const [shareUrl, setShareUrl] = useState("");
   const [fulfilledNotice, setFulfilledNotice] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
 
   useEffect(() => {
     loadOrCreate();
@@ -28,34 +36,44 @@ function CartPage() {
 
   // Realtime: notify owner when their cart gets fulfilled
   useEffect(() => {
-    if (!cart) return;
+    if (!cart || fulfilledNotice) return;
     
     const unsubscribe = onSnapshot(doc(db, "carts", cart.id), (docSnap) => {
       const updated = docSnap.data() as { status: string };
-      if (updated?.status === "fulfilled") {
+      if (updated?.status === "fulfilled" && !fulfilledNotice) {
         setFulfilledNotice(true);
-        toast.success("🎉 Your cart was fulfilled by a friend!");
+        toast.success("🎉 Your cart was fulfilled by a friend!", {
+          duration: 5000,
+        });
       }
     });
 
     return () => unsubscribe();
-  }, [cart]);
+  }, [cart, fulfilledNotice]);
 
-  const copyLink = () => {
-    if (!shareUrl) return;
+  const copyLink = async () => {
+    if (!shareUrl || isCopying) return;
+    setIsCopying(true);
     
-    const fallbackCopy = (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard");
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+    } catch (err) {
+      // Fallback for non-secure contexts or older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = shareUrl;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
       try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        textArea.style.top = "0";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
         const successful = document.execCommand("copy");
-        document.body.removeChild(textArea);
         if (successful) {
           toast.success("Link copied to clipboard");
         } else {
@@ -64,16 +82,20 @@ function CartPage() {
       } catch (err) {
         toast.error("Failed to copy link");
       }
-    };
-
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(shareUrl)
-        .then(() => toast.success("Link copied to clipboard"))
-        .catch(() => fallbackCopy(shareUrl));
-    } else {
-      fallbackCopy(shareUrl);
+      document.body.removeChild(textArea);
+    } finally {
+      setTimeout(() => setIsCopying(false), 1000);
     }
   };
+
+  if (loading && items.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center text-muted-foreground animate-pulse">
+        <ShoppingBag className="mx-auto size-12 mb-4 opacity-20" />
+        <p>Loading your cart...</p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (

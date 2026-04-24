@@ -74,21 +74,29 @@ function WishlistDetail() {
     }
   };
 
-  const copyLink = () => {
-    if (!shareUrl) return;
+  const [isCopying, setIsCopying] = useState(false);
+  const copyLink = async () => {
+    if (!shareUrl || isCopying) return;
+    setIsCopying(true);
 
-    const fallbackCopy = (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Wishlist link copied");
+      } else {
+        throw new Error("Clipboard API unavailable");
+      }
+    } catch (err) {
+      const textArea = document.createElement("textarea");
+      textArea.value = shareUrl;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
       try {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        textArea.style.top = "0";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
         const successful = document.execCommand("copy");
-        document.body.removeChild(textArea);
         if (successful) {
           toast.success("Wishlist link copied");
         } else {
@@ -97,14 +105,9 @@ function WishlistDetail() {
       } catch (err) {
         toast.error("Failed to copy link");
       }
-    };
-
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(shareUrl)
-        .then(() => toast.success("Wishlist link copied"))
-        .catch(() => fallbackCopy(shareUrl));
-    } else {
-      fallbackCopy(shareUrl);
+      document.body.removeChild(textArea);
+    } finally {
+      setTimeout(() => setIsCopying(false), 1000);
     }
   };
 
