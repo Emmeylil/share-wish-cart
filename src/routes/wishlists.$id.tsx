@@ -75,8 +75,22 @@ function WishlistDetail() {
   };
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(shareUrl);
-    toast.success("Wishlist link copied");
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      toast.success("Wishlist link copied");
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+      toast.error("Failed to copy link");
+    }
   };
 
   if (!list) return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;

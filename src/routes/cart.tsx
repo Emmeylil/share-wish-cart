@@ -42,8 +42,22 @@ function CartPage() {
   }, [cart]);
 
   const copyLink = async () => {
-    await navigator.clipboard.writeText(shareUrl);
-    toast.success("Link copied to clipboard");
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      toast.success("Link copied to clipboard");
+    } catch (err) {
+      console.error("Failed to copy: ", err);
+      toast.error("Failed to copy link");
+    }
   };
 
   if (items.length === 0) {
