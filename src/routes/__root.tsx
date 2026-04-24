@@ -1,4 +1,6 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Header } from "@/components/Header";
+import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
 
@@ -29,21 +31,15 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Jumini — Share Carts & Event Wishlists" },
+      { name: "description", content: "Shop, share your cart with friends, and create event wishlists for birthdays, weddings & more." },
+      { name: "author", content: "Jumini" },
+      { property: "og:title", content: "Jumini — Share Carts & Event Wishlists" },
+      { property: "og:description", content: "Shop, share your cart, and build event wishlists." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -65,5 +61,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  return <Outlet />;
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
+        Jumini · A Jumia-inspired demo · Share carts & wishlists with anyone
+      </footer>
+      <Toaster position="top-right" richColors />
+    </div>
+  );
 }

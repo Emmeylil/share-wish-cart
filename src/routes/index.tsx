@@ -1,26 +1,100 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { Product } from "@/lib/types";
+import { ProductCard } from "@/components/ProductCard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
-}
+const CATEGORIES = ["All", "Electronics", "Fashion", "Home"] as const;
 
 function Index() {
-  return <PlaceholderIndex />;
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState<(typeof CATEGORIES)[number]>("All");
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        setProducts((data ?? []) as Product[]);
+        setLoading(false);
+      });
+  }, []);
+
+  const filtered = useMemo(() => {
+    return products.filter(
+      (p) =>
+        (active === "All" || p.category === active) &&
+        (!query || p.name.toLowerCase().includes(query.toLowerCase()))
+    );
+  }, [products, active, query]);
+
+  return (
+    <div className="container mx-auto px-4 py-6">
+      {/* Hero */}
+      <section className="rounded-xl bg-gradient-to-br from-primary to-primary-glow p-6 sm:p-10 text-primary-foreground mb-8 shadow-[var(--shadow-hover)]">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-widest opacity-90">
+            New on Jumini
+          </p>
+          <h1 className="text-3xl sm:text-5xl font-extrabold mt-2 leading-tight">
+            Share your cart. Wish together.
+          </h1>
+          <p className="mt-3 text-base sm:text-lg opacity-95">
+            Send a cart link so a friend can checkout for you. Build event
+            wishlists everyone can claim from — no duplicates, no surprises.
+          </p>
+        </div>
+      </section>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between mb-5">
+        <div className="flex gap-2 overflow-x-auto">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              onClick={() => setActive(c)}
+              className={`px-4 h-9 rounded-full text-sm font-medium border transition-colors whitespace-nowrap ${
+                active === c
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-foreground border-border hover:border-primary"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="h-10 px-3 rounded-md border border-input bg-background text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      {/* Product grid */}
+      <h2 className="text-xl font-bold mb-4">Trending products</h2>
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[3/4] rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filtered.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
