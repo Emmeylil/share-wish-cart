@@ -29,19 +29,21 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     try {
       // Find latest active cart for this guest
+      // Simplified query to avoid composite index requirement
       const q = query(
         collection(db, "carts"),
-        where("owner_guest_id", "==", guestId),
-        where("status", "==", "active"),
-        orderBy("created_at", "desc"),
-        limit(1)
+        where("owner_guest_id", "==", guestId)
       );
       const querySnapshot = await getDocs(q);
       
+      const activeCarts = querySnapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Cart))
+        .filter(c => c.status === "active")
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
       let cart: Cart | null = null;
-      if (!querySnapshot.empty) {
-        const docSnap = querySnapshot.docs[0];
-        cart = { id: docSnap.id, ...docSnap.data() } as Cart;
+      if (activeCarts.length > 0) {
+        cart = activeCarts[0];
       } else {
         const newCart = {
           owner_guest_id: guestId,
