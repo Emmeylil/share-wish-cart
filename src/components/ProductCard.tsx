@@ -4,14 +4,6 @@ import type { Product } from "@/lib/types";
 import { useCartStore } from "@/store/cart";
 import { toast } from "sonner";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { AddToWishlistDialog } from "@/components/AddToWishlistDialog";
 
 export function ProductCard({ product }: { product: Product }) {
