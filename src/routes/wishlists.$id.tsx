@@ -74,22 +74,37 @@ function WishlistDetail() {
     }
   };
 
-  const copyLink = async () => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(shareUrl);
-      } else {
+  const copyLink = () => {
+    if (!shareUrl) return;
+
+    const fallbackCopy = (text: string) => {
+      try {
         const textArea = document.createElement("textarea");
-        textArea.value = shareUrl;
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
         document.body.appendChild(textArea);
+        textArea.focus();
         textArea.select();
-        document.execCommand("copy");
+        const successful = document.execCommand("copy");
         document.body.removeChild(textArea);
+        if (successful) {
+          toast.success("Wishlist link copied");
+        } else {
+          toast.error("Failed to copy link");
+        }
+      } catch (err) {
+        toast.error("Failed to copy link");
       }
-      toast.success("Wishlist link copied");
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      toast.error("Failed to copy link");
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => toast.success("Wishlist link copied"))
+        .catch(() => fallbackCopy(shareUrl));
+    } else {
+      fallbackCopy(shareUrl);
     }
   };
 
