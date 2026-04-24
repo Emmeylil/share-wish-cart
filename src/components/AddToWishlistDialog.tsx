@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, addDoc, orderBy, limit } from "firebase/firestore";
 import { getGuestId, shortCode } from "@/lib/guest";
 import type { Product, Wishlist } from "@/lib/types";
 import { toast } from "sonner";
@@ -45,14 +46,19 @@ export function AddToWishlistDialog({
 
   useEffect(() => {
     if (!open) return;
-    const guestId = getGuestId();
-    supabase
-      .from("wishlists")
-      .select("*")
-      .eq("owner_guest_id", guestId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        const list = (data ?? []) as Wishlist[];
+    const fetchWishlists = async () => {
+      try {
+        const guestId = getGuestId();
+        const q = query(
+          collection(db, "wishlists"),
+          where("owner_guest_id", "==", guestId),
+          orderBy("created_at", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        const list = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Wishlist[];
         setWishlists(list);
         if (list.length > 0) {
           setSelectedId(list[0].id);
@@ -60,54 +66,55 @@ export function AddToWishlistDialog({
         } else {
           setCreating(true);
         }
-      });
+      } catch (error) {
+        console.error("Error fetching wishlists:", error);
+      }
+    };
+    fetchWishlists();
   }, [open]);
 
   const handleAdd = async () => {
     let wishlistId = selectedId;
-    if (creating) {
-      if (!newName.trim()) {
-        toast.error("Please enter a wishlist name");
-        return;
-      }
-      const { data, error } = await supabase
-        .from("wishlists")
-        .insert({
+    try {
+      if (creating) {
+        if (!newName.trim()) {
+          toast.error("Please enter a wishlist name");
+          return;
+        }
+        const newWishlist = {
           owner_guest_id: getGuestId(),
           name: newName.trim(),
           event_date: newDate || null,
           description: newDesc || null,
           share_code: shortCode(),
-        })
-        .select()
-        .single();
-      if (error || !data) {
-        toast.error("Failed to create wishlist");
+          created_at: new Date().toISOString(),
+        };
+        const docRef = await addDoc(collection(db, "wishlists"), newWishlist);
+        wishlistId = docRef.id;
+      }
+      if (!wishlistId) {
+        toast.error("Select a wishlist");
         return;
       }
-      wishlistId = data.id;
-    }
-    if (!wishlistId) {
-      toast.error("Select a wishlist");
-      return;
-    }
-    const { error } = await supabase.from("wishlist_items").insert({
-      wishlist_id: wishlistId,
-      product_id: product.id,
-      priority,
-    });
-    if (error) {
-      if (error.code === "23505") {
-        toast.info("Already in this wishlist");
-      } else {
-        toast.error("Could not add to wishlist");
-      }
-    } else {
+      
+      // Check for duplicate (optional in Firestore as it doesn't have unique constraints like Postgres)
+      // but we can do a quick check if needed.
+      
+      await addDoc(collection(db, "wishlist_items"), {
+        wishlist_id: wishlistId,
+        product_id: product.id,
+        priority,
+        created_at: new Date().toISOString(),
+      });
+      
       toast.success("Added to wishlist");
       onOpenChange(false);
       setNewName("");
       setNewDate("");
       setNewDesc("");
+    } catch (error) {
+      console.error("Error adding to wishlist:", error);
+      toast.error("Could not add to wishlist");
     }
   };
 

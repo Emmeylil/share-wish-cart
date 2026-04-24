@@ -4,7 +4,8 @@ import { useCartStore } from "@/store/cart";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, Share2, Copy, ShoppingBag, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({ meta: [{ title: "Your Cart — Jumini" }] }),
@@ -28,23 +29,16 @@ function CartPage() {
   // Realtime: notify owner when their cart gets fulfilled
   useEffect(() => {
     if (!cart) return;
-    const channel = supabase
-      .channel(`cart-${cart.id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "carts", filter: `id=eq.${cart.id}` },
-        (payload) => {
-          const updated = payload.new as { status: string };
-          if (updated.status === "fulfilled") {
-            setFulfilledNotice(true);
-            toast.success("🎉 Your cart was fulfilled by a friend!");
-          }
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    
+    const unsubscribe = onSnapshot(doc(db, "carts", cart.id), (docSnap) => {
+      const updated = docSnap.data() as { status: string };
+      if (updated?.status === "fulfilled") {
+        setFulfilledNotice(true);
+        toast.success("🎉 Your cart was fulfilled by a friend!");
+      }
+    });
+
+    return () => unsubscribe();
   }, [cart]);
 
   const copyLink = async () => {

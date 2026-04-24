@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import type { Product } from "@/lib/types";
 import { ProductCard } from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,26 +16,35 @@ function Index() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [active, setActive] = useState<(typeof CATEGORIES)[number]>("All");
-  const [query, setQuery] = useState("");
+  const [queryText, setQueryText] = useState("");
 
   useEffect(() => {
-    supabase
-      .from("products")
-      .select("*")
-      .order("created_at", { ascending: true })
-      .then(({ data }) => {
-        setProducts((data ?? []) as Product[]);
+    const fetchProducts = async () => {
+      try {
+        const q = query(collection(db, "products"), orderBy("created_at", "asc"));
+        const querySnapshot = await getDocs(q);
+        const data = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Product[];
+        setProducts(data);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+
+    fetchProducts();
   }, []);
 
   const filtered = useMemo(() => {
     return products.filter(
       (p) =>
         (active === "All" || p.category === active) &&
-        (!query || p.name.toLowerCase().includes(query.toLowerCase()))
+        (!queryText || p.name.toLowerCase().includes(queryText.toLowerCase()))
     );
-  }, [products, active, query]);
+  }, [products, active, queryText]);
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -115,8 +125,8 @@ function Index() {
         <input
           type="text"
           placeholder="Search products..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={queryText}
+          onChange={(e) => setQueryText(e.target.value)}
           className="h-10 px-3 rounded-md border border-input bg-background text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>

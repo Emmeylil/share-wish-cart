@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, getDoc, limit } from "firebase/firestore";
 import type { Cart, CartItem, Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag, CheckCircle2 } from "lucide-react";
@@ -26,22 +27,41 @@ function SharedCart() {
 
   useEffect(() => {
     (async () => {
-      const { data: c } = await supabase
-        .from("carts")
-        .select("*")
-        .eq("share_code", code)
-        .maybeSingle();
-      if (!c) {
+      try {
+        const cartQuery = query(collection(db, "carts"), where("share_code", "==", code), limit(1));
+        const cartSnap = await getDocs(cartQuery);
+        
+        if (cartSnap.empty) {
+          setLoading(false);
+          return;
+        }
+
+        const cartDoc = cartSnap.docs[0];
+        const cartData = { id: cartDoc.id, ...cartDoc.data() } as Cart;
+        setCart(cartData);
+
+        const itemsQuery = query(collection(db, "cart_items"), where("cart_id", "==", cartDoc.id));
+        const itemsSnap = await getDocs(itemsQuery);
+        
+        const itemsWithProducts = await Promise.all(
+          itemsSnap.docs.map(async (itemDoc) => {
+            const itemData = itemDoc.data() as CartItem;
+            const productRef = doc(db, "products", itemData.product_id);
+            const productSnap = await getDoc(productRef);
+            return {
+              ...itemData,
+              id: itemDoc.id,
+              product: { id: productSnap.id, ...productSnap.data() } as Product
+            };
+          })
+        );
+        
+        setItems(itemsWithProducts);
+      } catch (error) {
+        console.error("Error fetching shared cart:", error);
+      } finally {
         setLoading(false);
-        return;
       }
-      setCart(c as Cart);
-      const { data: its } = await supabase
-        .from("cart_items")
-        .select("*, product:products(*)")
-        .eq("cart_id", c.id);
-      setItems((its ?? []) as any);
-      setLoading(false);
     })();
   }, [code]);
 

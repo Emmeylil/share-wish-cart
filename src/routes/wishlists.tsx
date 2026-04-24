@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, addDoc, orderBy } from "firebase/firestore";
 import { getGuestId, shortCode } from "@/lib/guest";
 import type { Wishlist } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -27,31 +28,46 @@ function WishlistsPage() {
   const [desc, setDesc] = useState("");
 
   const load = async () => {
-    const guestId = getGuestId();
-    const { data } = await supabase
-      .from("wishlists")
-      .select("*")
-      .eq("owner_guest_id", guestId)
-      .order("created_at", { ascending: false });
-    setLists((data ?? []) as Wishlist[]);
-    setLoading(false);
+    try {
+      const guestId = getGuestId();
+      const q = query(
+        collection(db, "wishlists"),
+        where("owner_guest_id", "==", guestId),
+        orderBy("created_at", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Wishlist[];
+      setLists(data);
+    } catch (error) {
+      console.error("Error loading wishlists:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
   const create = async () => {
     if (!name.trim()) { toast.error("Name required"); return; }
-    const { error } = await supabase.from("wishlists").insert({
-      owner_guest_id: getGuestId(),
-      name: name.trim(),
-      event_date: date || null,
-      description: desc || null,
-      share_code: shortCode(),
-    });
-    if (error) { toast.error("Failed to create"); return; }
-    toast.success("Wishlist created");
-    setOpen(false); setName(""); setDate(""); setDesc("");
-    load();
+    try {
+      await addDoc(collection(db, "wishlists"), {
+        owner_guest_id: getGuestId(),
+        name: name.trim(),
+        event_date: date || null,
+        description: desc || null,
+        share_code: shortCode(),
+        created_at: new Date().toISOString(),
+      });
+      toast.success("Wishlist created");
+      setOpen(false); setName(""); setDate(""); setDesc("");
+      load();
+    } catch (error) {
+      console.error("Error creating wishlist:", error);
+      toast.error("Failed to create");
+    }
   };
 
   return (

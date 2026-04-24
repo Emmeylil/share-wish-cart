@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, limit, orderBy, getDoc } from "firebase/firestore";
 import { getGuestId, shortCode } from "@/lib/guest";
 import type { Cart, CartItem, Product } from "@/lib/types";
 
@@ -26,40 +27,65 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (!guestId) return;
     set({ loading: true });
 
-    // Find latest active cart for this guest
-    const { data: existing } = await supabase
-      .from("carts")
-      .select("*")
-      .eq("owner_guest_id", guestId)
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    let cart = existing as Cart | null;
-    if (!cart) {
-      const { data: created, error } = await supabase
-        .from("carts")
-        .insert({ owner_guest_id: guestId, share_code: shortCode() })
-        .select()
-        .single();
-      if (error) {
-        set({ loading: false });
-        return;
+    try {
+      // Find latest active cart for this guest
+      const q = query(
+        collection(db, "carts"),
+        where("owner_guest_id", "==", guestId),
+        where("status", "==", "active"),
+        orderBy("created_at", "desc"),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      let cart: Cart | null = null;
+      if (!querySnapshot.empty) {
+        const docSnap = querySnapshot.docs[0];
+        cart = { id: docSnap.id, ...docSnap.data() } as Cart;
+      } else {
+        const newCart = {
+          owner_guest_id: guestId,
+          share_code: shortCode(),
+          status: "active",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const docRef = await addDoc(collection(db, "carts"), newCart);
+        cart = { id: docRef.id, ...newCart } as Cart;
       }
-      cart = created as Cart;
+
+      set({ cart });
+      await get().refreshItems(cart.id);
+    } catch (error) {
+      console.error("Error loading cart:", error);
+    } finally {
+      set({ loading: false });
     }
-    set({ cart });
-    await get().refreshItems(cart.id);
-    set({ loading: false });
   },
 
   refreshItems: async (cartId: string) => {
-    const { data } = await supabase
-      .from("cart_items")
-      .select("*, product:products(*)")
-      .eq("cart_id", cartId);
-    set({ items: (data ?? []) as (CartItem & { product: Product })[] });
+    try {
+      const q = query(collection(db, "cart_items"), where("cart_id", "==", cartId));
+      const querySnapshot = await getDocs(q);
+      
+      const itemsWithProducts = await Promise.all(
+        querySnapshot.docs.map(async (itemDoc) => {
+          const itemData = itemDoc.data() as CartItem;
+          // Fetch product details for each item (Firestore doesn't support joins)
+          const productRef = doc(db, "products", itemData.product_id);
+          const productSnap = await getDoc(productRef);
+          return {
+            ...itemData,
+            id: itemDoc.id,
+            product: { id: productSnap.id, ...productSnap.data() } as Product
+          };
+        })
+      );
+
+      set({ items: itemsWithProducts });
+    } catch (error) {
+      console.error("Error refreshing items:", error);
+    }
   },
 
   addItem: async (product, qty = 1) => {
@@ -73,7 +99,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     if (existing) {
       await get().updateQty(existing.id, existing.quantity + qty);
     } else {
-      await supabase.from("cart_items").insert({
+      await addDoc(collection(db, "cart_items"), {
         cart_id: cart.id,
         product_id: product.id,
         quantity: qty,
@@ -84,13 +110,15 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   updateQty: async (itemId, qty) => {
     if (qty < 1) return get().removeItem(itemId);
-    await supabase.from("cart_items").update({ quantity: qty }).eq("id", itemId);
+    const itemRef = doc(db, "cart_items", itemId);
+    await updateDoc(itemRef, { quantity: qty });
     const cart = get().cart;
     if (cart) await get().refreshItems(cart.id);
   },
 
   removeItem: async (itemId) => {
-    await supabase.from("cart_items").delete().eq("id", itemId);
+    const itemRef = doc(db, "cart_items", itemId);
+    await deleteDoc(itemRef);
     const cart = get().cart;
     if (cart) await get().refreshItems(cart.id);
   },
@@ -99,3 +127,4 @@ export const useCartStore = create<CartState>((set, get) => ({
     get().items.reduce((sum, i) => sum + Number(i.product.price) * i.quantity, 0),
   itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
 }));
+

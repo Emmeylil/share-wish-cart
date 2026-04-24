@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, limit, onSnapshot } from "firebase/firestore";
 import type { Wishlist, WishlistItem, Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,53 +33,85 @@ function PublicWishlist() {
   const [name, setName] = useState("");
 
   const reload = async (wishlistId: string) => {
-    const { data } = await supabase
-      .from("wishlist_items")
-      .select("*, product:products(*)")
-      .eq("wishlist_id", wishlistId);
-    setItems((data ?? []) as any);
+    try {
+      const q = query(collection(db, "wishlist_items"), where("wishlist_id", "==", wishlistId));
+      const querySnapshot = await getDocs(q);
+      const itemsWithProducts = await Promise.all(
+        querySnapshot.docs.map(async (itemDoc) => {
+          const itemData = itemDoc.data() as WishlistItem;
+          const productRef = doc(db, "products", itemData.product_id);
+          const productSnap = await getDoc(productRef);
+          return {
+            ...itemData,
+            id: itemDoc.id,
+            product: { id: productSnap.id, ...productSnap.data() } as Product
+          };
+        })
+      );
+      setItems(itemsWithProducts);
+    } catch (error) {
+      console.error("Error loading shared wishlist items:", error);
+    }
   };
 
   useEffect(() => {
     (async () => {
-      const { data: w } = await supabase
-        .from("wishlists").select("*").eq("share_code", code).maybeSingle();
-      if (!w) { setLoading(false); return; }
-      setList(w as Wishlist);
-      await reload((w as Wishlist).id);
-      setLoading(false);
+      try {
+        const wishlistQuery = query(collection(db, "wishlists"), where("share_code", "==", code), limit(1));
+        const wishlistSnap = await getDocs(wishlistQuery);
+        
+        if (wishlistSnap.empty) {
+          setLoading(false);
+          return;
+        }
+
+        const wishlistDoc = wishlistSnap.docs[0];
+        const wishlistData = { id: wishlistDoc.id, ...wishlistDoc.data() } as Wishlist;
+        setList(wishlistData);
+        await reload(wishlistDoc.id);
+      } catch (error) {
+        console.error("Error fetching shared wishlist:", error);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [code]);
 
   useEffect(() => {
     if (!list) return;
-    const channel = supabase
-      .channel(`pub-wishlist-${list.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "wishlist_items", filter: `wishlist_id=eq.${list.id}` },
-        () => reload(list.id)
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const q = query(collection(db, "wishlist_items"), where("wishlist_id", "==", list.id));
+    const unsubscribe = onSnapshot(q, () => {
+      reload(list.id);
+    });
+    return () => unsubscribe();
   }, [list]);
 
   const submitClaim = async () => {
     if (!claiming || !name.trim()) { toast.error("Please enter your name"); return; }
-    const { error } = await supabase
-      .from("wishlist_items")
-      .update({ claimed_by_name: name.trim(), claimed_at: new Date().toISOString() })
-      .eq("id", claiming.id);
-    if (error) { toast.error("Failed"); return; }
-    toast.success("Thanks for claiming this gift!");
-    setClaiming(null); setName("");
+    try {
+      const itemRef = doc(db, "wishlist_items", claiming.id);
+      await updateDoc(itemRef, {
+        claimed_by_name: name.trim(),
+        claimed_at: new Date().toISOString()
+      });
+      toast.success("Thanks for claiming this gift!");
+      setClaiming(null); setName("");
+    } catch (error) {
+      console.error("Error claiming gift:", error);
+      toast.error("Failed");
+    }
   };
 
   const unclaim = async (it: WishlistItem) => {
-    await supabase
-      .from("wishlist_items")
-      .update({ claimed_by_name: null, claimed_at: null })
-      .eq("id", it.id);
+    try {
+      const itemRef = doc(db, "wishlist_items", it.id);
+      await updateDoc(itemRef, {
+        claimed_by_name: null,
+        claimed_at: null
+      });
+    } catch (error) {
+      console.error("Error unclaiming gift:", error);
+    }
   };
 
   if (loading) return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;

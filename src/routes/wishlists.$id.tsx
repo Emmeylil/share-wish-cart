@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, doc, getDoc, deleteDoc, onSnapshot } from "firebase/firestore";
 import type { Wishlist, WishlistItem, Product } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Calendar, Share2, Copy, Trash2, CheckCircle2, Star, Heart } from "lucide-react";
@@ -19,37 +20,58 @@ function WishlistDetail() {
   const [shareUrl, setShareUrl] = useState("");
 
   const loadItems = async () => {
-    const { data } = await supabase
-      .from("wishlist_items")
-      .select("*, product:products(*)")
-      .eq("wishlist_id", id);
-    setItems((data ?? []) as any);
+    try {
+      const q = query(collection(db, "wishlist_items"), where("wishlist_id", "==", id));
+      const querySnapshot = await getDocs(q);
+      const itemsWithProducts = await Promise.all(
+        querySnapshot.docs.map(async (itemDoc) => {
+          const itemData = itemDoc.data() as WishlistItem;
+          const productRef = doc(db, "products", itemData.product_id);
+          const productSnap = await getDoc(productRef);
+          return {
+            ...itemData,
+            id: itemDoc.id,
+            product: { id: productSnap.id, ...productSnap.data() } as Product
+          };
+        })
+      );
+      setItems(itemsWithProducts);
+    } catch (error) {
+      console.error("Error loading wishlist items:", error);
+    }
   };
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("wishlists").select("*").eq("id", id).maybeSingle();
-      if (data) {
-        setList(data as Wishlist);
-        setShareUrl(`${window.location.origin}/w/${(data as Wishlist).share_code}`);
+      try {
+        const docRef = doc(db, "wishlists", id);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = { id: docSnap.id, ...docSnap.data() } as Wishlist;
+          setList(data);
+          setShareUrl(`${window.location.origin}/w/${data.share_code}`);
+        }
+        loadItems();
+      } catch (error) {
+        console.error("Error fetching wishlist:", error);
       }
-      loadItems();
     })();
 
-    const channel = supabase
-      .channel(`wishlist-${id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "wishlist_items", filter: `wishlist_id=eq.${id}` },
-        () => loadItems()
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const q = query(collection(db, "wishlist_items"), where("wishlist_id", "==", id));
+    const unsubscribe = onSnapshot(q, () => {
+      loadItems();
+    });
+
+    return () => unsubscribe();
   }, [id]);
 
   const removeItem = async (itemId: string) => {
-    await supabase.from("wishlist_items").delete().eq("id", itemId);
-    loadItems();
+    try {
+      await deleteDoc(doc(db, "wishlist_items", itemId));
+      loadItems();
+    } catch (error) {
+      console.error("Error removing wishlist item:", error);
+    }
   };
 
   const copyLink = async () => {
